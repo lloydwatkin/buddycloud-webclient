@@ -3,7 +3,6 @@
 { Sidebar } = require './sidebar/index'
 { MinimalSidebar } = require './sidebar/minimal'
 { BaseView } = require './base'
-{ DiscoverView } = require './discover/index'
 { CreateTopicChannelView } = require './create_topic_channel/index'
 
 class exports.MainView extends BaseView
@@ -13,7 +12,7 @@ class exports.MainView extends BaseView
     events:
         'scroll': 'on_scroll'
 
-    initialize: ->
+    initialize: () ->
         super
         @bind 'show', @show
         @bind 'hide', @hide
@@ -23,9 +22,9 @@ class exports.MainView extends BaseView
         @timeouts = {} # this contains the channelview remove timeouts
         @channels = new Channels
         @channels.comparator = (a, b) =>
-            if @sidebar.search.filter.length
-                ai = a.id.indexOf(@sidebar.search.filter)
-                bi = b.id.indexOf(@sidebar.search.filter)
+            if (filter = @sidebar.search.filter).length
+                ai = a.id.indexOf(filter)
+                bi = b.id.indexOf(filter)
                 return  1 if ai is -1 and bi isnt -1
                 return -1 if bi is -1 and ai isnt -1
             if a.unread_count or b.unread_count
@@ -35,20 +34,12 @@ class exports.MainView extends BaseView
             db = new Date(b.nodes.get('posts')?.posts.first()?.get_last_update() or 0).getTime()
             return db - da
 
-        @sidebar = if app.users.isAnonymous(app.users.current)
-                new MinimalSidebar
-                    model: @channels
-                    parent:this
-            else
-                new Sidebar
-                    model: @channels
-                    parent:this
-        @sidebar.search.on('filter', @sort_channels)
+
+        do @updateSidebar # initialize
+        @on('update sidebar', @updateSidebar)
 
         # special because normaly parents add their children views to the dom
         @render =>
-            app.users.current.channels.on('add', @add_channel)
-            app.users.current.channels.forEach(  @add_channel)
             @channels.on('remove', @remove_channel_view)
             # FIXME: let the ChannelView be created on-demand, they're
             # rendering much too often during startup. mrflix supposedly says
@@ -58,15 +49,41 @@ class exports.MainView extends BaseView
 
             @setCurrentChannel(@_first_channel)
 
-    render: (callback) ->
-        super ->
-            body = $('body').removeClass('start')
+    updateSidebar: () ->
+        isanon = app.users.isAnonymous(app.users.current)
+        return if @_sidebar_isanon_before is isanon
+        @_sidebar_isanon_before = isanon
+        @sidebar?.destroy(rmel:no)
+        @sidebar = if isanon
+                new MinimalSidebar
+                    model: @channels
+                    parent:this
+            else
+                new Sidebar
+                    model: @channels
+                    parent:this
+        @sidebar.search.on('filter', @sort_channels)
+        if @rendered
+            @sidebar.once('template:create', @trigger.bind(this, 'sidebar:template'))
+            @sidebar.render =>
+                @sidebar.moveIn()
+        @ready =>
+            body = $('body')
             if app.users.isAnonymous(app.users.current)
                 body.addClass('anonymous')
             else
                 body.removeClass('anonymous')
+            process.nextTick =>
+                app.users.current.channels.on('add',@add_channel)
+                app.users.current.channels.forEach( @add_channel)
+
+
+    render: (callback) ->
+        super ->
+            body = $('body').removeClass('start')
             body.append(@$el)
             @$el.show()
+            @sidebar.once('template:create', @trigger.bind(this, 'sidebar:template'))
             @sidebar.render()
             callback?()
 
@@ -130,6 +147,7 @@ class exports.MainView extends BaseView
         view
 
     remove_channel_view: (channel) =>
+        @views[channel.cid]?.destroy()
         delete @views[channel.cid]
         delete @timeouts[channel.cid]
 
@@ -140,17 +158,13 @@ class exports.MainView extends BaseView
             @trigger 'subview:content', tpl
         @current.render()
 
-    on_discover: =>
-        old = @current
-        unless @discover?
-            @discover = new DiscoverView(parent: this)
-            @discover.once 'template:create', (tpl) =>
-                @trigger 'subview:content', tpl
-            @discover.render()
-        @current = @discover
-        if @current isnt old
-            old?.trigger 'hide'
-            @current.trigger 'show'
-
     on_scroll: =>
         @current?.on_scroll()
+
+    destroy: =>
+        return if @destroyed
+        @sidebar.destroy()
+        @channels.forEach(@remove_channel_view)
+        for prop in ['sidebar', 'channels', 'views', 'timeouts', 'current']
+            delete this[prop]
+        super

@@ -6,8 +6,8 @@
 { FollowNotificationView } = require './follow_notification'
 { PendingNotificationView } = require './pending_notification'
 { OverlayLogin } = require '../authentication/overlay'
-{ EventHandler, throttle_callback } = require '../../util'
-
+{ EventHandler, throttle_callback, gravatar } = require '../../util'
+{ setupInlineMention } = require './util'
 
 class exports.ChannelView extends BaseView
     template: require '../../templates/channel/index'
@@ -26,7 +26,7 @@ class exports.ChannelView extends BaseView
 
     initialize: () ->
         super
-  
+
         @bind 'show', @show
         @bind 'hide', @hide
 
@@ -81,6 +81,7 @@ class exports.ChannelView extends BaseView
 
         @follow_notification_views = {}
 
+    setupInlineMention:setupInlineMention
     render: (callback) ->
         node = @model.nodes.get_or_create id: 'posts'
         @metadata = node.metadata
@@ -193,13 +194,7 @@ class exports.ChannelView extends BaseView
                     @show_post_error error
 
     clickLogin: EventHandler (ev) ->
-        # Just make this work for now
         app.router.navigate "login", true
-        return
-        # TODO: implement the overlay login below and graceful
-        # replacement of the Strophe session & registration!
-        @overlay ?= new OverlayLogin()
-        @overlay.show()
 
     clickFollow: EventHandler (ev) ->
         @$('.follow').hide()
@@ -317,40 +312,10 @@ class exports.ChannelView extends BaseView
                 @pending_notification?
             @pending_notification.remove()
             delete @pending_notification
-    
-    keypress:  (ev) ->
-     if !@autocomplete?
-       @setupInlineMention()
-     if ev.which is 16
-       if @autocomplete.disabled is false
-         @autocomplete.enable()
-       return
-     # Escape, tab, enter, up, down
-     if ev.which in [27, 9, 13, 9]
-       @autocomplete.disable()
-       return
 
-    setupInlineMention: ->
-     followers = []
-     @details.followers.model.forEach (user) ->
-       uid = user.get 'id'
-       followers.push user.attributes.jid
-      
-     @autocomplete = @$('textarea').autocomplete(
-           lookup: followers
-           delimiter: ' ',
-           minChars: 1,
-           zIndex: 9999,
-           searchPrefix: '@',
-           noCache: true,
-           searchEverywhere: true
-     )
-     suggestions = @autocomplete.options.lookup.suggestions
-     @details.followers.bind('add', (user) ->
-       jid = user.get('jid')
-       suggestions.push jid
-     )
-     @details.followers.bind('remove', (user) ->
-       jid = user.get('jid')
-       suggestions = suggestions.filter (user) -> user isnt "#{jid}"
-     )
+    keypress: () ->
+        if !@autocomplete?
+           @setupInlineMention @$('.newTopic textarea')
+
+    getPostsNode: () ->
+        @postsNode = @model.nodes.get('posts')

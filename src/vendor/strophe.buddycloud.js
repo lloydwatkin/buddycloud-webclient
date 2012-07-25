@@ -53,7 +53,7 @@ Strophe.addConnectionPlugin('buddycloud', {
     	if (index != -1) this._tags[namespace].splice(index, 1);
     	return this;
     },
-    
+
     //The plugin must have the init function.
     init: function(conn) {
         this._connection = conn;
@@ -64,8 +64,8 @@ Strophe.addConnectionPlugin('buddycloud', {
                 throw new Error(plugin + " plugin required!");
         });
 
-        Strophe.addNamespace('FORWARD', "urn:xmpp:forward:tmp");
-        Strophe.addNamespace('MAM', "urn:xmpp:archive#management");
+        Strophe.addNamespace('FORWARD', "urn:xmpp:forward:0");
+        Strophe.addNamespace('MAM', "urn:xmpp:mam:tmp");
 
         // generate _postParsers with the right namespaces
         this._postParsers = this._postParsers_template();
@@ -247,7 +247,7 @@ Strophe.addConnectionPlugin('buddycloud', {
 
             // Takes an <item /> element and returns a hash of it's attributes
             post = this._parsetag(entry, this._tags['standard']);
-            
+
             // content
             attr = entry.getElementsByTagName("content");
             if (attr.length > 0) {
@@ -426,15 +426,14 @@ Strophe.addConnectionPlugin('buddycloud', {
      */
     replayNotifications: function(start, end, success, error) {
         var conn = this._connection;
-        var queryAttrs = { xmlns: Strophe.NS.MAM };
-        if (start)
-            queryAttrs.start = start.toISOString ? start.toISOString() : start;
-        if (end)
-            queryAttrs.end = end.toISOString ? end.toISOString() : end;
         var iq = $iq({ from: conn.jid,
                        to: this.channels.jid,
                        type: 'get' }).
-            c('query', queryAttrs);
+            c('query', { xmlns: Strophe.NS.MAM });
+        if (start)
+            iq.c('start').t(start.toISOString ? start.toISOString() : start).up();
+        if (end)
+            iq.c('end')  .t(end.toISOString   ? end.toISOString()   : end)  .up();
         conn.sendIQ(iq, success, this._errorcode(error));
     },
 
@@ -570,4 +569,4 @@ Strophe.addConnectionPlugin('buddycloud', {
         });
         return res;
     },
-})
+});

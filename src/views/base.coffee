@@ -1,4 +1,4 @@
-{ View } = require 'backbone'
+{ View }     = require 'backbone'
 { Template } = require 'dynamictemplate'
 
 adapters =
@@ -69,3 +69,15 @@ class exports.BaseView extends View
             @_waitingfordom ?= []
             @_waitingfordom.push callback
         return this
+
+    destroy: (opts = {}) =>
+        return if @destroyed
+        @trigger('destroy')
+        @el?.remove() if opts.rmel ? yes
+        @off() # removeAllListeners
+        # remove references
+        for prop in ['el', '$el', 'options', 'model', 'collection', 'parent']
+            delete this[prop]
+        @destroyed = yes
+        Object.freeze this # You’re frozen when your heart’s not open
+

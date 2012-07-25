@@ -31,11 +31,18 @@ formatdate = require 'formatdate'
 { getCredentials } = require './handlers/creds'
 { throttle_callback } = require './util'
 
+# plugin api
+require 'dt-selector' # required in plugins
+plugin_queue = []
 app.use = (plugin) ->
-    plugin?.call(this, this, require)
+    if plugin_queue?
+        # app isn't ready yet
+        plugin_queue.push(plugin)
+    else
+        plugin?.call(this, this, require)
 
 ### could be used to switch console output ###
-app.debug_mode = config.debug ? on
+app.debug_mode = config?.debug ? on
 Strophe.log = (level, msg) ->
     console.warn "STROPHE:", level, msg if app.debug_mode and level > 0
 Strophe.fatal = (msg) ->
@@ -91,10 +98,8 @@ app.initialize = ->
 
     # show error message when config isnt loaded
     if typeof config is 'undefined'
-        $('#index')
-            .addClass('broken')
-            .html(do require './templates/welcome/configerror.html')
-        return
+        return $(document).ready ->
+            $('body').html(do require './templates/welcome/configerror.html')
 
 
     # caches
@@ -144,19 +149,30 @@ app.initialize = ->
 
     $(document).ready ->
         # page routing
+<<<<<<< HEAD
         app.router  = new Router
         app.plugins = []
         for plugin,version of config.plugins
            id = "#{plugin}-#{version}"
            app.plugins[id] = window.plugin[id].plugin.init app, require
+=======
+        app.router = new Router
+        # initialize plugins
+        for plugin in plugin_queue
+            plugin?.call(app, app, require)
+        plugin_queue = null
+>>>>>>> c59d5c2eebaa43fc28772d4f159e4a93c974b853
 
 app.setConnection = (connection) ->
     # Avoid DataHandler double-binding
     if app.handler.connection isnt connection
+        app.handler.connection?.off() # removeAllListeners
         app.handler.connection = connection
         app.handler.connector = connection.connector
         app.users.current = connection.user
         app.handler.data.setConnector connection.connector
+        connection.on(   'connected', app.emit.bind(app,    'connected'))
+        connection.on('disconnected', app.emit.bind(app, 'disconnected'))
 
 app.relogin = (user, password, callback) ->
     console.warn "relogin", user
@@ -173,9 +189,9 @@ app.relogin = (user, password, callback) ->
             app.handler.connection.connection.disconnect()
 
         app.setConnection connection
-        app.router.on_connected()
         console.warn "app.relogin success callback"
         callback?()
+        app.emit('connected')
     connection.bind 'connected', on_connected
     ["authfail", "regifail", "authfail", "sbmtfail", "connfail", "disconnected"].forEach (type) ->
         connection.bind type, ->
@@ -191,3 +207,5 @@ Modernizr.load
     test:Modernizr.localStorage
     yep:'web/js/store.js'
     complete:app.initialize
+
+Modernizr.load(load:config.plugins) if Array.isArray(config.plugins)

@@ -5,6 +5,11 @@
 # manages a list of groups
 class exports.DiscoverView extends BaseView
     template: require '../../templates/discover/index'
+    adapter: 'jquery'
+    overlay: yes
+
+    events:
+        'click .login': 'clickLogin'
 
     initialize: ->
         @views = {}
@@ -48,6 +53,10 @@ class exports.DiscoverView extends BaseView
 #             lists:
 #                 'nearby':"Nearby"
 
+
+    clickLogin: EventHandler (ev) ->
+        app.router.navigate "login", true
+
     show: =>
         @button.addClass('active')
 
@@ -59,7 +68,15 @@ class exports.DiscoverView extends BaseView
             for _, view of @views
                 view.on('template:create', @trigger.bind(this, 'subview:group'))
                 view.render()
+            $('body').append(@$el)
             callback?.call(this)
+
+    destroy: =>
+        return if @destroyed
+        view?.destroy() for view in @views
+        delete @button
+        delete @views
+        super
 
 channels_to_collection = (model, method, args...) ->
     {connector} = app.handler

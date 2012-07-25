@@ -23,7 +23,7 @@ snippets = ["main"
 
 
 cwd = path.join(__dirname, "..", "..")
-config.defaults path.join(cwd, "config.js")
+config.defaults path.join(cwd, "devconfig.js")
 
 buildPath  = path.join(cwd, "assets")
 designPath = path.join(cwd, "src", "_design")
@@ -92,32 +92,30 @@ start_server = (args, opts) ->
     server.configure ->
         server.use express.favicon(path.join(buildPath, "favicon.ico"))
 
+        console.log "bundling app.js …".yellow
         javascript = browserify
                 mount  : '/web/js/app.js'
-                verbose: yes
-                watch  : yes
+                watch  : not config.build and config.watch
                 cache  : on
                 debug  : config.dev
                 require: [
-                    jquery  :'br-jquery'
-                    path.join(cwd, "src", "init")
+                    'br-jquery'
                 ]
-                extensions:
-                    '.html': (source) ->
-                        source = source
-                            .replace(/'/g, "\\'") # don't let html escape itself
-                            .replace(/\n/g, "\\n'+\n'") # new lines
-                        "module.exports=function(){return '#{source}'}"
-                    'modernizr.js': (source) ->
-                        # modernizr needs the full global window namespace
-                        "!function(){#{source}}.call(window)"
-                    'strophe.js': (source) ->
-                        # expose MD5 lib because we need that for gravatar too
-                        source += ";window.MD5=MD5"
-                        source
+        javascript.alias('jquery', 'br-jquery')
+
+        javascript.register '.html', (source) ->
+            "module.exports=function(){return '#{JSON.stringify source}'};"
+        javascript.register 'modernizr.js', (source) ->
+            # modernizr needs the full global window namespace
+            "!function(){#{source}}.call(window);"
+        javascript.register 'strophe.js', (source) ->
+            # expose MD5 lib because we need that for gravatar too
+            source += ";window.MD5=MD5;"
+            source
+
+        javascript.addEntry(path.join(cwd, "src", "init.coffee"))
 
         javascript.use(require('shimify'))
-        javascript.use(require('scopify').createScope require:'./init')
         
         if config.build
             # minification

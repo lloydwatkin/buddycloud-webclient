@@ -21,7 +21,6 @@ window.jQuery = window.$ = require 'jquery'
 require "./vendor/jquery.copycss.js"
 require "./vendor/jquery.mousewheel.js"
 require "./vendor/jquery.antiscroll.js"
-require "./vendor/jquery.animate-enhanced.js"
 require "./vendor/jquery.autocomplete.js"
 
 # from npm
@@ -42,3 +41,5 @@ require "./vendor/backbone-extensions.js"
 ## helpers
 
 require './vendor/modernizr'
+
+require "./vendor/jquery.animate-enhanced.js" if Modernizr.csstransforms
