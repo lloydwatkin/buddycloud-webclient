@@ -15,7 +15,6 @@ design = require '../../_design/sidebar/entry'
 
 module.exports = design (view) ->
     return new Template {schema:5, view}, ->
-        view.bind('remove', @remove)
         channel = view.model
         @$div class:'channel', ->
             view.bind 'update:highlight', =>
@@ -61,11 +60,17 @@ module.exports = design (view) ->
                 update = ->
                     avatar.attr style:"background-image:url(#{channel.avatar})"
 
-                    jid = channel.get('id')?.split('@') or []
-                    username.text   "#{jid[0]}"
-                    domain.text "@#{jid[1]}"
+                    title = view.metadata.get('title')?.value
+                    if title?
+                        username.text "#{title}"
+                        domain.text ""
+                    else
+                        jid = channel.get('id')?.split('@') or []
+                        username.text   "#{jid[0]}"
+                        domain.text "@#{jid[1]}"
+                    owner.attr title:"#{channel.get 'id'}"
 
-                channel.bind('change', update)
+                view.metadata.on('change', update)
                 do update
 
                 avatar.end()
@@ -74,9 +79,7 @@ module.exports = design (view) ->
                 owner.end()
 
                 status = @$span class:'status'
-                update_status = (text) ->
+                view.on 'update:status', (text) ->
                     status.text text ? ""
                     status.attr title:(text ? "")
-                view.bind 'update:status', update_status
-                update_status()
 

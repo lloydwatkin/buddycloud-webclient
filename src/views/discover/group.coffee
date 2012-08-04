@@ -28,5 +28,9 @@ class exports.DiscoverGroupView extends BaseView
 #                     @trigger 'subview:list', view.el
             callback?.call(this)
 
-
+    destroy: =>
+        return if @destroyed
+        view?.destroy() for view in @views
+        delete @views
+        super
 

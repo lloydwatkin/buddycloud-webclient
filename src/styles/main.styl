@@ -16,6 +16,7 @@
 @import "bubbling"
 @import "mobile"
 @import "autocomplete"
+@import "userbar"
 
 textarea
   color black
@@ -77,10 +78,25 @@ body
     .content
       padding-left 247px
       left 0
+    .userbar
+      .getin
+        display block
+      .getout
+        display none
     .sidebar
       .search
         background transparent
         box-shadow none
+        input
+          box-shadow 0 1px rgba(255, 255, 255, 0.89)
+          border 1px solid rgba(0, 0, 0, 0.21)
+      .actionBar
+        box-shadow none
+      button
+        background none
+        border none
+        color black
+        font-weight normal
 
 .headbar
   top 0

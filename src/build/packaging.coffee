@@ -21,6 +21,18 @@ entries = [
 ].concat spiderDir("assets", "web/fonts"), spiderDir("assets", "public")
 
 
+mockups = [
+    "anon.html"
+    "create_topic_channel.html"
+    "discover_globe.html"
+    "discover.html"
+    "edit_channel.html"
+    "private.html"
+    "startpage.html"
+    "streams.html"
+    "loading.html"
+]
+
 
 module.exports = (tarPath) ->
     tarball = new Tarball {noProprietary:yes},
@@ -30,6 +42,7 @@ module.exports = (tarPath) ->
             gname:'nogroup'
             uid: 1000
             gid: 1000
+            mode: 0o0644
 
     tarball
         .on('error', onError)
@@ -38,6 +51,8 @@ module.exports = (tarPath) ->
         .on 'close', ->
             console.log "Built #{tarPath}".bold.green
             process.exit 0
+
+    entries = entries.concat(mockups) if config.dev
 
     # using mapSeries because we dont to glutter the terminal
     async.mapSeries( entries

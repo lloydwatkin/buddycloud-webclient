@@ -7,31 +7,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <link href='http://fonts.googleapis.com/css?family=Nunito' rel='stylesheet' type='text/css'>
   <link rel="stylesheet" href="web/css/main.css" type="text/css" media="screen">
+  <script type="text/javascript" src="config.js"></script>
   <script src="web/js/app.js"></script>
-  <!--<script>require('main');</script>-->
 </head>
 <body class="wideChannelView anon">
+
+
+
+
   <div class="overlay">
     <div class="modal twoWindowed">
       <div class="close">Close</div>
       <div class="left">
         <h2>buddycloud login</h2>
-        <p>Not yet a member? <a href="#">Register</a></p>
+        <p><span>Not yet a 0.?</span> <a href="#">Register</a></p>
       </div>
       <form class="right clearfix">
+        <span class="errors"></span>
         <div>
-          <label for="home_login_jid">name@domain.com</label>
-          <input type="email" id="home_login_jid" placeholder="name@domain.com" required />
+          <label for="auth_name">Choose a username</label>
+          <input type="text" id="auth_name" placeholder="film-girl99" name="name" required autofocus />
         </div>
         <div>
-          <label for="home_login_pwd">password</label>
-          <input type="password" id="home_login_pwd" required />
+          <label for="auth_pwd">and a nice password</label>
+          <input type="password" id="auth_pwd" name="password" required />
         </div>
-        <p class="leftBox"><a href="#">Forgot password?</a></p>
-        <button type="submit" id="home_login_submit" class="callToAction">Login</button>
+        <div>
+          <!-- placceholder for the email input field -->
+        </div>
+        <span>
+        <input type="checkbox" id="store_local" />
+          <label for="store_local"> remember password <span>on this computer</span>
+          </label>
+        </span>
+        <span>
+          <a href="#">Forgot your password? Don't worry.</a>
+        </span>
+        <p class="leftBox">
+          <span class="spinner">logging you in</span>
+        </p>
+        <button type="submit" id="auth_submit" class="callToAction">Login</button>
       </form>
     </div>
   </div>
+
+
+
+
   <div id="sidebar">
     <div id="channels">
       <div class="search">
@@ -961,6 +983,8 @@
     list.children().clone().appendTo(list);
     $(this).remove();
   });
+
+  $('.overlay').show()
 </script>
 </body>
 </html>

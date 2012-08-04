@@ -4,6 +4,7 @@ unless process.title is 'browser'
         select: () ->
             el = @select ".content", "article.topic, div.channelDetails, .notification"
             el.find('h2, span:not(.loader, .button), #poweredby').text("")
+            el.find('img.avatar').removeAttr('src')
             return el
 
 
@@ -53,10 +54,7 @@ module.exports = design (view) ->
                                 else if state is off
                                     save.hide()
                                     edit.text "Edit"
-                            if app.users.isAnonymous(app.users.current)
-                                @$span class:'login button', ->
-                                    @text "Login"#  FIXME +"or Register to Follow"
-                            else
+                            unless app.users.isAnonymous(app.users.current)
                                 follow = @$span class:'follow button', ->
                                     @text "Follow"
                                 unfollow = @$span class:'unfollow button', ->
@@ -116,7 +114,7 @@ module.exports = design (view) ->
                         tutorial = null
                         return
                     if view.model.isLoading
-                        # This is added to not to display any helpers or 
+                        # This is added to not to display any helpers or
                         # notifies while channel is still loading.
                         return
                     type = "empty"
@@ -146,5 +144,5 @@ module.exports = design (view) ->
 
 tutorial_text =
     tutorial: ["This channel is still empty."
-               "Be awesome and be the first to post."].join " "
-    empty:"Hmm, it seems that this channel is still empty."
+               "first post"].join " "
+    empty:"This channel has no posts. Yet."

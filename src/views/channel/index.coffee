@@ -5,14 +5,13 @@
 { ErrorNotificationView } = require './error_notification'
 { FollowNotificationView } = require './follow_notification'
 { PendingNotificationView } = require './pending_notification'
-{ OverlayLogin } = require '../authentication/overlay'
 { EventHandler, throttle_callback, gravatar } = require '../../util'
+{ setupInlineMention } = require './util'
 
 class exports.ChannelView extends BaseView
     template: require '../../templates/channel/index'
 
     events:
-        'click .login': 'clickLogin'
         'click .follow': 'clickFollow'
         'click .unfollow': 'clickUnfollow'
         'click .newTopic, .answer': 'openNewTopicEdit'
@@ -81,6 +80,7 @@ class exports.ChannelView extends BaseView
 
         @follow_notification_views = {}
 
+    setupInlineMention:setupInlineMention
     render: (callback) ->
         node = @model.nodes.get_or_create id: 'posts'
         @metadata = node.metadata
@@ -191,15 +191,6 @@ class exports.ChannelView extends BaseView
                 else
                     console.error "postError", error
                     @show_post_error error
-
-    clickLogin: EventHandler (ev) ->
-        # Just make this work for now
-        app.router.navigate "login", true
-        return
-        # TODO: implement the overlay login below and graceful
-        # replacement of the Strophe session & registration!
-        @overlay ?= new OverlayLogin()
-        @overlay.show()
 
     clickFollow: EventHandler (ev) ->
         @$('.follow').hide()
@@ -321,7 +312,6 @@ class exports.ChannelView extends BaseView
     keypress: () ->
         if !@autocomplete?
            @setupInlineMention @$('.newTopic textarea')
-        
+
     getPostsNode: () ->
-        console.debug @model       
         @postsNode = @model.nodes.get('posts')

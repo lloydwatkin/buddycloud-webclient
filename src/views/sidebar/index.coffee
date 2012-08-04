@@ -2,7 +2,6 @@
 { ChannelEntry } = require './entry'
 { Searchbar } = require './search'
 { BaseView } = require '../base'
-{ setCredentials } = require '../../handlers/creds'
 
 # The sidebar shows all channels the user is:
 # * subscribed to
@@ -13,7 +12,6 @@ class exports.Sidebar extends BaseView
     events:
         'click #create_topic_channel': 'on_create_topic_channel'
         'click button.discover': 'on_discover'
-        'click #logout': 'on_logout'
 
     initialize: () ->
         super
@@ -21,8 +19,6 @@ class exports.Sidebar extends BaseView
         @search = new Searchbar
             model:@parent.channels
             parent:this
-        @channelsel = null
-        @hidden = yes
 
         # sidebar entries
         @current = undefined
@@ -65,7 +61,7 @@ class exports.Sidebar extends BaseView
         if @timeouts[channel.cid]?
             clearTimeout @timeouts[channel.cid]
         @timeouts[channel.cid] = setTimeout ( =>
-            @views[channel.cid].trigger 'remove'
+            @views[channel.cid].destroy()
             delete @timeouts[channel.cid]
             delete @views[channel.cid]
         ), time
@@ -104,10 +100,6 @@ class exports.Sidebar extends BaseView
         @search.reset()
         old?.trigger('update:highlight')
 
-    on_logout: ->
-        setCredentials()
-        return true
-
     on_create_topic_channel: =>
         console.log "on_create_topic_channel", arguments...
         old = @current
@@ -136,3 +128,11 @@ class exports.Sidebar extends BaseView
         @$el?.animate(left:"-#{@$el?.width?() ? 0}px", t)
 #         @overview.hide(t)
         @hidden = yes
+
+    destroy: =>
+        return if @destroyed
+        @search.destroy()
+        @model.forEach((c) => @views[c?.id]?.destroy())
+        for prop in ['personal', 'timeouts', 'current', 'search', 'views']
+            delete this[prop]
+        super

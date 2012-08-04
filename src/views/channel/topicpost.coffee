@@ -2,6 +2,7 @@
 { CommentsView } = require './comments'
 { PostView } = require './post'
 { BaseView } = require '../base'
+{ setupInlineMention } = require './util'
 
 class exports.TopicPostView extends BaseView
 
@@ -9,6 +10,8 @@ class exports.TopicPostView extends BaseView
         'keyup .answer textarea': 'keypress'
 
     template: require '../../templates/channel/topicpost'
+
+    setupInlineMention:setupInlineMention
 
     initialize: ->
         @hidden = no
@@ -55,11 +58,11 @@ class exports.TopicPostView extends BaseView
                 @el?.hide()
             else
                 @el?.show()
-                
+
 
     keypress: () ->
         if !@autocomplete?
           @setupInlineMention @$('.answer textarea')
-    
+
     getPostsNode: () ->
         @postsNode = @parent.parent.model.nodes.get('posts')

@@ -1,14 +1,14 @@
 # views
+{ Userbar } = require '../views/userbar/index'
+{ Startpage } = require '../views/discover/startpage'
 { LoadingChannelView } = require '../views/channel/loading'
-{ RegisterView } = require '../views/authentication/register'
-{ WelcomeView } = require '../views/welcome/show'
-{ LoginView } = require '../views/authentication/login'
+{ DiscoverView } = require '../views/discover/index'
+{ OverlayView } = require '../views/authentication/overlay'
 { MainView } = require '../views/main'
 
 class exports.Router extends Backbone.Router
-    routes : # eg http://localhost:3000/welcome
+    routes : # eg http://localhost:3000/discover
         ""           :"index"
-        "welcome"    :"index"
         "login"      :"login"
         "register"   :"register"
         "discover"   :"discover"
@@ -17,13 +17,18 @@ class exports.Router extends Backbone.Router
         "create-topic-channel":"createtopicchannel"
 
     constructor: ->
+        @last_fragment = "/"
         delete @routes['register'] if config.registration is off
         super
 
     initialize: ->
         Backbone.history.start pushState:on
+        app.on(   'connected', @on_connected)
+        app.on('disconnected', @on_disconnected)
+        @connected = no
 
     navigate: ->
+        @last_fragment = Backbone.history.fragment unless @current_view?.overlay
         # Avoid navigating while edit mode is on
         unless app.views?.index?.current?.isEditing?()
             super
@@ -31,30 +36,44 @@ class exports.Router extends Backbone.Router
     setView: (view) ->
         return unless view? # TODO access denied msg
         return if view is @current_view
-        @current_view?.trigger 'hide'
+        if view.overlay
+            @previous_view = @current_view
+            view.once 'close', =>
+                @current_view = @previous_view
+                @navigate @last_fragment
+        else
+            @current_view?.trigger 'hide'
         @current_view = view
         @current_view.trigger 'show'
 
     on_connected: =>
-        if @previous_connection?
-            @previous_connection.unbind 'disconnected', @on_disconnected
-        @previous_connection = app.handler.connection
-        app.handler.connection.bind 'disconnected', @on_disconnected
-
+        @connected = yes
         if app.users.target?
             jid = app.users.target.get('id')
-            app.views.index = new MainView
+            if app.views.discover
+                app.views.index?.destroy()
+                app.views.index = new MainView
+            else
+                app.views.index?.trigger 'update sidebar'
+                app.views.index ?= new MainView
             @navigate jid
             # in anonymous direct browsing route, navigate above doesn't
             # trigger an URL change event at all
             @loadingchannel jid
+        else if app.views.discover?
+            do @discover
+        if app.views.start?
+            if app.users.isAnonymous(app.users.current)
+                app.views.start.update()
+            else
+                app.views.start.destroy()
+                app.views.start = null
 
     on_disconnected: =>
+        return unless @connected
          # we are still on the welcome site
         return unless app.views.index?.constructor is MainView
-        $('#sidebar').remove()
-        app.views.index.el.remove()
-        delete app.views.index
+        @connected = no
 
         # Last login succeeded? Reconnect!
         if app.handler.connection.wasConnected()
@@ -71,23 +90,32 @@ class exports.Router extends Backbone.Router
     # routes
 
     index: ->
+        app.views.userbar ?= new Userbar
         if app.handler.connection.connected
-            app.views.index ?= new MainView
+            if app.views.start?
+                @setView app.views.start
+            else
+                app.views.index ?= new MainView
+                @setView app.views.index
         else
             unless app.users.isAnonymous(app.users.current)
-                return @navigate app.users.current.get 'id', true
-            app.views.index ?= new WelcomeView
-        @setView app.views.index
+                @navigate app.users.current.get 'id', true
+            else
+                app.views.start ?= new Startpage
+                @setView app.views.start
 
     login: ->
-        app.views.login ?= new LoginView
-        @setView app.views.login
+        app.views.auth ?= new OverlayView
+        app.views.auth.setMode 'login'
+        @setView app.views.auth
 
     register: ->
-        app.views.register ?= new RegisterView
-        @setView app.views.register
+        app.views.auth ?= new OverlayView
+        app.views.auth.setMode 'register'
+        @setView app.views.auth
 
     overview: ->
+        app.views.userbar ?= new Userbar
         @setView app.views.overview
 
     loadingchannel: (id, domain) ->
@@ -96,6 +124,8 @@ class exports.Router extends Backbone.Router
         app.users.target = app.users.get_or_create id: jid
 
         if app.handler.connection.connected
+            app.views.userbar ?= new Userbar
+            app.views.index ?= new MainView
             channel = app.channels.get_or_create id: jid
             app.views.index.setCurrentChannel channel
             @setView app.views.index
@@ -108,9 +138,20 @@ class exports.Router extends Backbone.Router
         if app.views.index?.on_create_topic_channel?
             app.views.index.on_create_topic_channel()
         else
-            @navigate "/"
+            @navigate "/", true
 
     discover: () ->
-        app.views.index?.on_discover?()
+        if app.views.discover is 'wait'
+            app.views.discover = new DiscoverView(parent:app.views.index)
+        else unless app.views.discover?
+            app.views.discover = 'wait'
+            do @discover if @connected
+            return
+
+        if @connected
+            app.views.userbar ?= new Userbar
+            app.views.index ?= new MainView
+            app.views.discover.update()
+            @setView app.views.discover
 
 

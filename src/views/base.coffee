@@ -1,6 +1,5 @@
 { View }     = require 'backbone'
 { Template } = require 'dynamictemplate'
-{ gravatar } = require '../../util'
 
 adapters =
     jquery: require('dt-jquery').bind(this,
@@ -71,33 +70,14 @@ class exports.BaseView extends View
             @_waitingfordom.push callback
         return this
 
-    setupInlineMention: (element) ->
-        @getPostsNode()
-        if !@postsNode?
-            return
-        followers = []
-        @postsNode.subscribers.forEach (subscriber) ->
-            if subscriber.get('subscription') is 'none'
-                return
-            jid = subscriber.get 'id'
-            followers[jid] = {jid:jid, avatar: "#{gravatar jid}"}
-        if @autocomplete?
-            # Just update followers
-            @autocomplete.setLookup followers
-            return
-        @autocomplete = $(element).autocomplete(
-            lookup: followers
-            minChars: 1
-            zIndex: 9999
-            searchPrefix: '@'
-            noCache: true
-            dataKey: 'jid'
-            delimiter: ' '
-        )
-        @autocomplete.template = (entry,  formatResult, currentValue, suggestion) ->
-            entry = formatResult suggestion, entry, currentValue
-            return "<img class=\"avatar\" src=\"#{this.options.lookup.suggestions[suggestion].avatar}\"/><span class=\"entry\">#{entry}</span>"
-        self = @
-        @postsNode.on('subscriber:update', (user) ->
-            self.setupInlineMention(element)
-        )
+    destroy: (opts = {}) =>
+        return if @destroyed
+        @trigger('destroy')
+        @el?.remove() if opts.rmel ? yes
+        @off() # removeAllListeners
+        # remove references
+        for prop in ['el', '$el', 'options', 'model', 'collection', 'parent']
+            delete this[prop]
+        @destroyed = yes
+        Object.freeze this # You’re frozen when your heart’s not open
+
